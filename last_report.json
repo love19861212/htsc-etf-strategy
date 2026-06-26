@@ -1,0 +1,71 @@
+{
+  "timestamp": "2026-06-27T06:42:40.760260+08:00",
+  "mode": "analyze",
+  "pnl_abs": 9030.94,
+  "pnl_pct": 0.903,
+  "total_assets": 1009030.94,
+  "available_balance": 7988.82,
+  "profile": "balanced",
+  "triggers": {
+    "soft_stoploss_trigger": -5,
+    "hard_stoploss_trigger": -8,
+    "defense_trigger": -2,
+    "offense_trigger": 5
+  },
+  "stoploss_triggered": [],
+  "plan": [
+    {
+      "code": "518880",
+      "name": "黄金ETF",
+      "exchange": "SH",
+      "price": 8.39,
+      "currentQty": 36100.0,
+      "targetQty": 36000,
+      "delta": -100.0,
+      "tPlus0": true
+    },
+    {
+      "code": "513100",
+      "name": "纳指ETF",
+      "exchange": "SH",
+      "price": 2.158,
+      "currentQty": 139900.0,
+      "targetQty": 140200,
+      "delta": 300.0,
+      "tPlus0": true
+    },
+    {
+      "code": "512760",
+      "name": "半导体ETF",
+      "exchange": "SH",
+      "price": 1.462,
+      "currentQty": 174400.0,
+      "targetQty": 172500,
+      "delta": -1900.0,
+      "tPlus0": false
+    },
+    {
+      "code": "511880",
+      "name": "货币ETF",
+      "exchange": "SH",
+      "price": 100.562,
+      "currentQty": 900.0,
+      "targetQty": 1000,
+      "delta": 100.0,
+      "tPlus0": true
+    },
+    {
+      "code": "510300",
+      "name": "沪深300ETF",
+      "exchange": "SH",
+      "price": 4.907,
+      "currentQty": 10200.0,
+      "targetQty": 10200,
+      "delta": 0.0,
+      "tPlus0": false
+    }
+  ],
+  "predicted_deferred_t1": [],
+  "days_to_contest_end": 23,
+  "log_path": "/root/.openclaw/skills/htsc-etf-strategy/rebalance-20260626-224236.log"
+}

@@ -89,6 +89,19 @@ def checkStopLoss(positions, cfg, fh, log):
 
 
 def main():
+    # === 交易日判断：周六/周日/法定节假日不交易 ===
+    try:
+        from chinese_calendar import is_workday
+        from datetime import date
+        today = date.today()
+        if not is_workday(today):
+            from chinese_calendar import is_holiday
+            reason = "法定节假日" if is_holiday(today) else "周末"
+            print(f"[{datetime.now().isoformat()}] ⚠️ 今日({today})为{reason}，跳过交易。")
+            return
+    except ImportError:
+        pass  # 库未装时跳过检查，兼容旧环境
+
     mode = sys.argv[1] if len(sys.argv) > 1 else "rebalance"
     with open(LOG, "a") as fh:
         log(f"=== mode={mode} 启动 ===", fh)
