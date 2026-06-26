@@ -101,7 +101,7 @@ def main():
         log(f"账户: 总资产={bal['totalAssets']:.2f} 可用={bal['availableBalance']:.2f} 冻结={bal['frozenAmount']:.2f}", fh)
         log(f"持仓: {len(pos.get('positions', []))} 只, 总市值={pos.get('totalMarketValue', 0):.2f}", fh)
         for p in pos.get("positions", []):
-            log(f"  - {p['stockName']}({p['stockCode']}) {p['quantity']}股 成本={p['costPrice']:.3f} 现价={p['currentPrice']:.3f} 盈亏={p['profitPct']:.2f}%", fh)
+            log(f"  - {p['stockName']}({p['stockCode']}) {p['quantity']}股 成本={p['costPrice']:.3f} 现价={p['currentPrice']:.3f} 盈亏={p['profitPct']:.2f}% 可卖={p.get('availableQuantity', 'N/A')}", fh)
 
         # 2. #3 动态攻防切换 — 根据累计 P&L 选 profile
         pnl_abs, pnl_pct = computeCumulativePnlPct(bal)
@@ -136,18 +136,71 @@ def main():
         for x in plan:
             log(f"  {x['name']}({x['code']}): 现 {x['currentQty']} → 目标 {x['targetQty']} (Δ {x['delta']:+}) @ {x['price']:.3f}", fh)
 
+        # === 预判 T+1 deferred (基于 current availableQuantity, 不依赖实际下单) ===
+        predicted_deferred = []
+        for x in plan:
+            if x["delta"] < 0:  # 卖单
+                current = next((p for p in pos["positions"] if p["stockCode"] == x["code"]), None)
+                if current:
+                    avail = current.get("availableQuantity", current["quantity"])
+                    if abs(x["delta"]) > avail:
+                        predicted_deferred.append({
+                            "code": x["code"], "name": x["name"],
+                            "wanted_to_sell": abs(x["delta"]),
+                            "available_today": avail,
+                            "deferred_amount": abs(x["delta"]) - avail,
+                            "reason": "T+1 锁定 (今天买入的不能今天卖)"
+                        })
+        if predicted_deferred:
+            log(f"⏳ 预判 T+1 deferred (明天 rebalance 补):", fh)
+            for d in predicted_deferred:
+                log(f"  - {d['name']}({d['code']}): 想卖 {d['wanted_to_sell']} 可卖 {d['available_today']} 明日补 {d['deferred_amount']}", fh)
+        else:
+            log("✅ 无 T+1 deferred", fh)
+
+        # === 输出 REPORT_JSON (analyze 和 rebalance 模式都生成, 供 cron LLM 引用) ===
+        from datetime import datetime, timezone, timedelta
+        contest_end = datetime.fromisoformat(CFG["contestEnd"])
+        now_bj = datetime.now(timezone(timedelta(hours=8)))
+        days_left = (contest_end - now_bj).days
+
+        report = {
+            "timestamp": now_bj.isoformat(),
+            "mode": mode,
+            "pnl_abs": round(pnl_abs, 2),
+            "pnl_pct": round(pnl_pct, 3),
+            "total_assets": bal["totalAssets"],
+            "available_balance": bal["availableBalance"],
+            "profile": profile_name,
+            "triggers": {
+                # 暴露的是"触发阈值" (profitPct 到达该值则触发), 带符号, LLM 不会再误读
+                "soft_stoploss_trigger": -CFG["risk"]["softStopLossPct"],
+                "hard_stoploss_trigger": -CFG["risk"]["stopLossPct"],
+                "defense_trigger": CFG["risk"]["defenseTriggerPct"],
+                "offense_trigger": CFG["risk"]["offenseTriggerPct"],
+            },
+            "stoploss_triggered": list(stoploss_overrides.keys()),
+            "plan": plan,
+            "predicted_deferred_t1": predicted_deferred,
+            "days_to_contest_end": days_left,
+            "log_path": str(LOG),
+        }
+        with open(ROOT / f"last_report.json", "w") as rfh:
+            json.dump(report, rfh, ensure_ascii=False, indent=2)
+        log(f"📦 REPORT_JSON 写到 last_report.json", fh)
+
         if mode == "analyze":
             log("=== analyze 模式，不下单 ===", fh)
             return
 
-        # 3. 调仓执行
+        # 5. 调仓执行 (T+1 跟踪: 卖单卖不动时记 deferred, 明天的 rebalance 会接)
+        deferred_t1 = predicted_deferred  # 复用预判, 实际下单后补实际订单号
         for x in plan:
             if x["delta"] == 0:
                 continue
             direction = "buy" if x["delta"] > 0 else "sell"
             qty = abs(x["delta"])
-            # T+1 限制: 今天买的不能今天卖 (我们只买新建仓, 卖的是已有的 - 假设都是 T+1 之前买的)
-            # 简化: 卖单只对 T+0 或已持仓可卖部分
+            # T+1 限制: 今天买的不能今天卖
             if direction == "sell":
                 current = next((p for p in pos["positions"] if p["stockCode"] == x["code"]), None)
                 if not current:
@@ -156,8 +209,13 @@ def main():
                 # availableQuantity 是当前可卖数
                 avail = current.get("availableQuantity", current["quantity"])
                 if qty > avail:
+                    deferred_t1.append({
+                        "code": x["code"], "name": x["name"],
+                        "wanted_to_sell": qty, "available_today": avail,
+                        "deferred_amount": qty - avail
+                    })
                     qty = avail
-                    log(f"  ⚠️ 卖量超过 availableQuantity({avail}), 调整为 {qty}", fh)
+                    log(f"  ⏳ {x['name']} T+1 锁定: 想卖 {x['delta']} 可卖 {avail} → 今日卖 {qty}, 明日补 {qty - avail}", fh)
             qty = int(qty)  # 强制转 int,避免 float 字符串 '10000.0' 被 argparse 拒收
             if qty == 0:
                 continue
@@ -167,6 +225,42 @@ def main():
                     "--quantity", str(qty), "--order-type", "market")
             log(f"    结果: {r}", fh)
         log("=== 完成 ===", fh)
+
+        # === 6. 输出 REPORT_JSON + REPORT_MD (供 cron isolated agent 引用, 避免 LLM 瞎编) ===
+        # 计算距比赛结束还有几天
+        from datetime import datetime, timezone, timedelta
+        contest_end = datetime.fromisoformat(CFG["contestEnd"])
+        now_bj = datetime.now(timezone(timedelta(hours=8)))
+        days_left = (contest_end - now_bj).days
+
+        # 整理已成交操作 (从 log 解析, 简化: 重跑太重, 直接从 balances/orders 算)
+        report = {
+            "timestamp": now_bj.isoformat(),
+            "pnl_abs": round(pnl_abs, 2),
+            "pnl_pct": round(pnl_pct, 3),
+            "total_assets": bal["totalAssets"],
+            "available_balance": bal["availableBalance"],
+            "profile": profile_name,
+            "triggers": {
+                "soft_stoploss_trigger": -CFG["risk"]["softStopLossPct"],
+                "hard_stoploss_trigger": -CFG["risk"]["stopLossPct"],
+                "defense_trigger": CFG["risk"]["defenseTriggerPct"],
+                "offense_trigger": CFG["risk"]["offenseTriggerPct"],
+            },
+            "stoploss_triggered": list(stoploss_overrides.keys()),
+            "plan": plan,
+            "deferred_t1": deferred_t1,
+            "days_to_contest_end": days_left,
+            "log_path": str(LOG),
+        }
+        # 写 JSON (可被 LLM parse)
+        json.dump(report, fh, ensure_ascii=False, indent=2)
+        fh.write("\n=== REPORT_JSON_END ===\n")
+        fh.flush()
+        # 也写到独立文件, 方便程序读
+        with open(ROOT / f"last_report.json", "w") as rfh:
+            json.dump(report, rfh, ensure_ascii=False, indent=2)
+        log(f"📦 REPORT_JSON 写到 {LOG.name} 和 last_report.json", fh)
 
 
 if __name__ == "__main__":
