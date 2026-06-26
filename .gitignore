@@ -1,0 +1,10 @@
+# 运行时生成
+logs/
+*.log
+__pycache__/
+*.pyc
+.DS_Store
+
+# 私密
+config.local.json
+.htsc-skills/
