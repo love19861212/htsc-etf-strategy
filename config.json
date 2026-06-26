@@ -1,6 +1,6 @@
 {
   "name": "htsc-etf-strategy",
-  "version": "1.0",
+  "version": "1.1",
   "createdAt": "2026-06-26T00:48:00+08:00",
   "contest": "华泰柏瑞杯·全国首届ETF AI交易巅峰赛",
   "contestEnd": "2026-07-20T15:00:00+08:00",
@@ -14,12 +14,27 @@
   "risk": {
     "maxSinglePositionPct": 40,
     "stopLossPct": 8,
+    "softStopLossPct": 5,
+    "defenseTriggerPct": -2,
+    "offenseTriggerPct": 5,
     "minCashPct": 5
   },
   "targets": {
     "518880": { "name": "黄金ETF",   "weight": 30, "tPlus0": true  },
     "513100": { "name": "纳指ETF",   "weight": 30, "tPlus0": true  },
     "512760": { "name": "半导体ETF", "weight": 25, "tPlus0": false },
+    "511880": { "name": "货币ETF",   "weight": 10, "tPlus0": true  },
+    "510300": { "name": "沪深300ETF","weight": 5,  "tPlus0": false }
+  },
+  "defenseTargets": {
+    "518880": { "name": "黄金ETF",   "weight": 50, "tPlus0": true  },
+    "511880": { "name": "货币ETF",   "weight": 30, "tPlus0": true  },
+    "513100": { "name": "纳指ETF",   "weight": 20, "tPlus0": true  }
+  },
+  "offenseTargets": {
+    "512760": { "name": "半导体ETF", "weight": 35, "tPlus0": false },
+    "513100": { "name": "纳指ETF",   "weight": 30, "tPlus0": true  },
+    "518880": { "name": "黄金ETF",   "weight": 20, "tPlus0": true  },
     "511880": { "name": "货币ETF",   "weight": 10, "tPlus0": true  },
     "510300": { "name": "沪深300ETF","weight": 5,  "tPlus0": false }
   },
