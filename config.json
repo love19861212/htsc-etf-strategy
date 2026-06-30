@@ -12,29 +12,29 @@
     "maxDriftPct": 5
   },
   "risk": {
-    "maxSinglePositionPct": 40,
-    "stopLossPct": 8,
-    "softStopLossPct": 5,
-    "defenseTriggerPct": -2,
-    "offenseTriggerPct": 5,
-    "minCashPct": 5
+    "maxSinglePositionPct": 60,
+    "stopLossPct": 6,
+    "softStopLossPct": 3,
+    "defenseTriggerPct": -1,
+    "offenseTriggerPct": 2,
+    "minCashPct": 3
   },
   "targets": {
-    "518880": { "name": "黄金ETF",   "weight": 35, "tPlus0": true  },
-    "513100": { "name": "纳指ETF",   "weight": 33, "tPlus0": true  },
-    "512760": { "name": "半导体ETF", "weight": 25, "tPlus0": false },
-    "511880": { "name": "货币ETF",   "weight": 7,  "tPlus0": true  }
+    "512760": { "name": "半导体ETF", "weight": 40, "tPlus0": false },
+    "513100": { "name": "纳指ETF",   "weight": 30, "tPlus0": true  },
+    "518880": { "name": "黄金ETF",   "weight": 20, "tPlus0": true  },
+    "511880": { "name": "货币ETF",   "weight": 10, "tPlus0": true  }
   },
   "defenseTargets": {
-    "518880": { "name": "黄金ETF",   "weight": 50, "tPlus0": true  },
-    "511880": { "name": "货币ETF",   "weight": 30, "tPlus0": true  },
-    "513100": { "name": "纳指ETF",   "weight": 20, "tPlus0": true  }
+    "518880": { "name": "黄金ETF",   "weight": 60, "tPlus0": true  },
+    "511880": { "name": "货币ETF",   "weight": 25, "tPlus0": true  },
+    "513100": { "name": "纳指ETF",   "weight": 15, "tPlus0": true  }
   },
   "offenseTargets": {
-    "512760": { "name": "半导体ETF", "weight": 35, "tPlus0": false },
-    "513100": { "name": "纳指ETF",   "weight": 32, "tPlus0": true  },
-    "518880": { "name": "黄金ETF",   "weight": 25, "tPlus0": true  },
-    "511880": { "name": "货币ETF",   "weight": 8,  "tPlus0": true  }
+    "512760": { "name": "半导体ETF", "weight": 55, "tPlus0": false },
+    "513100": { "name": "纳指ETF",   "weight": 30, "tPlus0": true  },
+    "518880": { "name": "黄金ETF",   "weight": 10, "tPlus0": true  },
+    "511880": { "name": "货币ETF",   "weight": 5,  "tPlus0": true  }
   },
   "exchange": {
     "518880": "SH", "513100": "SH", "512760": "SH",
@@ -42,11 +42,17 @@
   },
   "dynamic": {
     "enabled": true,
-    "description": "#4 动态市场信号 — P&L 选 profile + 市场信号 override. 排名 207 需要更激进: 1.5%/50% 阈值偏宽松 (多用 offense)",
-    "strong_risk_on_cross": 1.0,
-    "strong_risk_on_breadth": 50,
-    "strong_risk_off_cross": -1.5,
-    "strong_risk_off_breadth": 30,
-    "aggressive_offense_trigger_offense_avg": 1.0
+    "description": "#4 动态市场信号 + #6 top10 集中押 leader — 排名 207 → top 10 需要 30+%, 20 天, 日均 1.5%+. 集中持仓今日 leader 是唯一路径.",
+    "strong_risk_on_cross": 0.5,
+    "strong_risk_on_breadth": 40,
+    "strong_risk_off_cross": -2.0,
+    "strong_risk_off_breadth": 25,
+    "aggressive_offense_trigger_offense_avg": 0.5,
+    "top10_mode": true,
+    "top10_leader_weight": 55,
+    "top10_second_weight": 30,
+    "top10_third_weight": 10,
+    "top10_cash_weight": 5,
+    "top10_min_leader_change": 0.5
   }
 }

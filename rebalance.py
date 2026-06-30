@@ -84,6 +84,65 @@ def computeMarketSignals(quotes, cfg):
     return signals
 
 
+def selectTop10Profile(pnl_pct, cfg, signals):
+    """#6 Top 10 集中押 leader 策略
+
+    排名 207 → top 10 需要 30+% 收益, 20 天. 唯一路径是集中押今日 leader.
+    按今日 change% 排名, 给 leader 55%, 第二 30%, 第三 10%, 现金 5%.
+    若所有 ETF 普跌 → 退回 offense (用 offenseTargets 防御).
+    若 leader 涨幅 < 阈值 → 退回 offense (信号太弱).
+    """
+    dyn = cfg.get("dynamic", {})
+    w_leader = dyn.get("top10_leader_weight", 55)
+    w_second = dyn.get("top10_second_weight", 30)
+    w_third = dyn.get("top10_third_weight", 10)
+    w_cash = dyn.get("top10_cash_weight", 5)
+    min_leader_change = dyn.get("top10_min_leader_change", 0.5)
+
+    # 只考虑 active targets 里的 ETF (用三个 profile 的并集)
+    active_codes = getActiveTargets(cfg)
+
+    # 按今日 change% 排序 (只考虑 active 的)
+    sorted_codes = sorted(
+        [(c, signals["per_etf"].get(c, 0)) for c in active_codes if c != "510300"],
+        key=lambda x: -x[1]
+    )
+
+    reasons = []
+    leader_code, leader_change = sorted_codes[0] if sorted_codes else (None, 0)
+
+    # 条件 1: leader 涨幅 >= 阈值 (信号够强才集中)
+    if leader_change < min_leader_change:
+        reasons.append(f"今日 leader {leader_code} 涨幅 {leader_change:+.2f}% < {min_leader_change}%, 信号弱, 退回 offense")
+        return "offense", cfg["offenseTargets"], reasons
+
+    # 条件 2: 所有 ETF 都跌 (普跌) → defense
+    all_neg = all(v <= 0 for v in signals["per_etf"].values())
+    if all_neg:
+        reasons.append(f"所有 ETF 今日都跌/平, 集中押宝不适用 → 退回 defense")
+        return "defense", cfg["defenseTargets"], reasons
+
+    # 构造 top10 targets: leader 55%, 2nd 30%, 3rd 10%, 货币 5%
+    targets = {}
+    weights = [w_leader, w_second, w_third]
+    for i, (code, change) in enumerate(sorted_codes[:3]):
+        if change <= 0:  # 不买跌的
+            continue
+        tcfg = cfg["targets"].get(code) or cfg["offenseTargets"].get(code) or cfg["defenseTargets"].get(code)
+        if tcfg:
+            targets[code] = {"name": tcfg["name"], "weight": weights[i], "tPlus0": tcfg["tPlus0"]}
+            reasons.append(f"#{i+1} {tcfg['name']}({code}) {change:+.2f}% → {weights[i]}%")
+
+    # 加 货币ETF 补齐 (用 w_cash 或剩余)
+    remaining = 100 - sum(t["weight"] for t in targets.values())
+    if remaining > 0 and "511880" in active_codes:
+        tcfg = cfg["targets"]["511880"]
+        targets["511880"] = {"name": tcfg["name"], "weight": remaining, "tPlus0": tcfg["tPlus0"]}
+        reasons.append(f"货币ETF(511880) 现金仓 → {remaining}%")
+
+    return "top10", targets, reasons
+
+
 def selectProfile(pnl_pct, cfg, signals=None):
     """#3 动态攻防切换 — P&L + 市场信号综合选 profile
 
@@ -92,7 +151,12 @@ def selectProfile(pnl_pct, cfg, signals=None):
     risk = cfg["risk"]
     dyn = cfg.get("dynamic", {})
     dyn_enabled = dyn.get("enabled", False)
+    top10_mode = dyn.get("top10_mode", False)
     reasons = []
+
+    # === top10 模式优先 (官人 2026-06-30 要求进 top 10) ===
+    if top10_mode and signals is not None:
+        return selectTop10Profile(pnl_pct, cfg, signals)
 
     # === 基础 P&L 选 profile (静态逻辑) ===
     if pnl_pct <= risk["defenseTriggerPct"]:
@@ -357,7 +421,46 @@ def main():
         deferred_t1 = predicted_deferred
         current_cash = bal["availableBalance"]  # 跟踪动态 cash
 
-        # 阶段 1: 卖单 (释放 cash)
+        # === 阶段 0: 计算 cash 缺口, top10 模式需要补卖非 leader 持仓 ===
+        buy_only_plan = [x for x in plan if x["delta"] > 0]
+        cash_needed = sum(int(x["delta"]) * x["price"] for x in buy_only_plan)
+        cash_gap = cash_needed - current_cash
+        if profile_name == "top10" and cash_gap > 1000:  # 缺口 > 1K 触发补卖
+            log(f"  🔥 top10 模式需要 {cash_needed:.0f} cash, 现有 {current_cash:.0f}, 缺口 {cash_gap:.0f} → 补卖非 leader", fh)
+            target_codes = set(t for t in targets.keys())
+            # 按"非 top10 持仓"排序, 优先级: 不在 target 里 → 在 target 但权重低
+            non_leader_positions = []
+            for p in pos.get("positions", []):
+                code = p["stockCode"]
+                if code in target_codes:
+                    # 在 target 但不是 leader, 尽量保留 (可能还是 2nd/3rd)
+                    non_leader_positions.append((code, p, "in_target"))
+                else:
+                    non_leader_positions.append((code, p, "not_in_target"))
+            # 先卖 not_in_target, 再考虑 in_target
+            non_leader_positions.sort(key=lambda x: 0 if x[2] == "not_in_target" else 1)
+            for code, p, kind in non_leader_positions:
+                if current_cash >= cash_needed:
+                    break
+                avail = p.get("availableQuantity", p["quantity"])
+                if avail <= 0:
+                    continue
+                sell_price = p["currentPrice"]
+                # 按缺口计算需要卖多少 (留点 buffer)
+                still_need = cash_needed - current_cash + 5000
+                qty = min(int((still_need / sell_price) / 100) * 100, int(avail))
+                if qty < 100:
+                    continue
+                log(f"    补卖 {p['stockName']}({code}) {qty}股 @ {sell_price:.3f} ({kind}) → 释放 {qty*sell_price:.0f}", fh)
+                r = cli("submitOrder", "--direction", "sell",
+                        "--stock-code", code, "--exchange", p.get("exchange", "SH"),
+                        "--quantity", str(qty), "--order-type", "market")
+                log(f"    结果: {r}", fh)
+                if isinstance(r, dict) and r.get("ok"):
+                    current_cash += qty * sell_price
+                    log(f"    → cash 释放 +{qty*sell_price:.2f} ≈ {current_cash:.2f}", fh)
+
+        # 阶段 1: 卖单 (释放 cash) — 按 plan
         sell_orders = [x for x in plan if x["delta"] < 0]
         for x in sell_orders:
             qty = abs(x["delta"])
@@ -382,7 +485,6 @@ def main():
                     "--stock-code", x["code"], "--exchange", x["exchange"],
                     "--quantity", str(qty), "--order-type", "market")
             log(f"    结果: {r}", fh)
-            # 假设成交, 累加 cash (实际可能 T+1 才能用, 但 sell 是 T+0 入账)
             if isinstance(r, dict) and r.get("ok"):
                 current_cash += qty * x["price"]
                 log(f"    → cash 释放 +{qty * x['price']:.2f} ≈ {current_cash:.2f}", fh)

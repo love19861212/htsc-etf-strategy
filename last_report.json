@@ -1,14 +1,15 @@
 {
-  "timestamp": "2026-06-30T18:58:41.700694+08:00",
+  "timestamp": "2026-06-30T19:04:17.099345+08:00",
   "mode": "analyze",
   "pnl_abs": 36160.89,
   "pnl_pct": 3.616,
   "total_assets": 1036160.89,
   "available_balance": 5275.99,
-  "profile": "offense",
+  "profile": "top10",
   "profile_reasons": [
-    "P&L +3.62% 在 (-2%, +5%) 区间, 默认 balanced",
-    "市场强风险偏好 → 升 offense: cross=+2.54%, breadth=60%, offense_avg=+2.12%"
+    "#1 半导体ETF(512760) +3.06% → 55%",
+    "#2 纳指ETF(513100) +1.19% → 30%",
+    "货币ETF(511880) 现金仓 → 15%"
   ],
   "market_signals": {
     "breadth_pct": 60.0,
@@ -18,11 +19,11 @@
     "is_strong_risk_on": true,
     "is_strong_risk_off": false,
     "per_etf_change_pct": {
-      "512760": 3.06,
+      "511880": 0.0,
       "513100": 1.19,
-      "518880": -0.84,
       "510300": 1.21,
-      "511880": 0.0
+      "512760": 3.06,
+      "518880": -0.84
     }
   },
   "cleanup_pending": [
@@ -33,10 +34,10 @@
     }
   ],
   "triggers": {
-    "soft_stoploss_trigger": -5,
-    "hard_stoploss_trigger": -8,
-    "defense_trigger": -2,
-    "offense_trigger": 5
+    "soft_stoploss_trigger": -3,
+    "hard_stoploss_trigger": -6,
+    "defense_trigger": -1,
+    "offense_trigger": 2
   },
   "stoploss_triggered": [],
   "plan": [
@@ -46,8 +47,8 @@
       "exchange": "SH",
       "price": 1.585,
       "currentQty": 159900.0,
-      "targetQty": 228800,
-      "delta": 68900.0,
+      "targetQty": 359500,
+      "delta": 199600.0,
       "tPlus0": false
     },
     {
@@ -56,18 +57,8 @@
       "exchange": "SH",
       "price": 2.204,
       "currentQty": 138300.0,
-      "targetQty": 150400,
-      "delta": 12100.0,
-      "tPlus0": true
-    },
-    {
-      "code": "518880",
-      "name": "黄金ETF",
-      "exchange": "SH",
-      "price": 8.378,
-      "currentQty": 38300.0,
-      "targetQty": 30900,
-      "delta": -7400.0,
+      "targetQty": 141000,
+      "delta": 2700.0,
       "tPlus0": true
     },
     {
@@ -76,12 +67,12 @@
       "exchange": "SH",
       "price": 100.559,
       "currentQty": 1000.0,
-      "targetQty": 800,
-      "delta": -200.0,
+      "targetQty": 1500,
+      "delta": 500.0,
       "tPlus0": true
     }
   ],
   "predicted_deferred_t1": [],
   "days_to_contest_end": 19,
-  "log_path": "/root/.openclaw/skills/htsc-etf-strategy/rebalance-20260630-105836.log"
+  "log_path": "/root/.openclaw/skills/htsc-etf-strategy/rebalance-20260630-110412.log"
 }
