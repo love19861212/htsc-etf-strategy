@@ -1,11 +1,37 @@
 {
-  "timestamp": "2026-06-27T06:42:40.760260+08:00",
+  "timestamp": "2026-06-30T18:58:41.700694+08:00",
   "mode": "analyze",
-  "pnl_abs": 9030.94,
-  "pnl_pct": 0.903,
-  "total_assets": 1009030.94,
-  "available_balance": 7988.82,
-  "profile": "balanced",
+  "pnl_abs": 36160.89,
+  "pnl_pct": 3.616,
+  "total_assets": 1036160.89,
+  "available_balance": 5275.99,
+  "profile": "offense",
+  "profile_reasons": [
+    "P&L +3.62% 在 (-2%, +5%) 区间, 默认 balanced",
+    "市场强风险偏好 → 升 offense: cross=+2.54%, breadth=60%, offense_avg=+2.12%"
+  ],
+  "market_signals": {
+    "breadth_pct": 60.0,
+    "offensive_avg": 2.125,
+    "defensive_avg": -0.42,
+    "cross_asset": 2.545,
+    "is_strong_risk_on": true,
+    "is_strong_risk_off": false,
+    "per_etf_change_pct": {
+      "512760": 3.06,
+      "513100": 1.19,
+      "518880": -0.84,
+      "510300": 1.21,
+      "511880": 0.0
+    }
+  },
+  "cleanup_pending": [
+    {
+      "code": "510300",
+      "name": "300ETF",
+      "qty": 10200.0
+    }
+  ],
   "triggers": {
     "soft_stoploss_trigger": -5,
     "hard_stoploss_trigger": -8,
@@ -15,57 +41,47 @@
   "stoploss_triggered": [],
   "plan": [
     {
-      "code": "518880",
-      "name": "黄金ETF",
+      "code": "512760",
+      "name": "半导体ETF",
       "exchange": "SH",
-      "price": 8.39,
-      "currentQty": 36100.0,
-      "targetQty": 36000,
-      "delta": -100.0,
-      "tPlus0": true
+      "price": 1.585,
+      "currentQty": 159900.0,
+      "targetQty": 228800,
+      "delta": 68900.0,
+      "tPlus0": false
     },
     {
       "code": "513100",
       "name": "纳指ETF",
       "exchange": "SH",
-      "price": 2.158,
-      "currentQty": 139900.0,
-      "targetQty": 140200,
-      "delta": 300.0,
+      "price": 2.204,
+      "currentQty": 138300.0,
+      "targetQty": 150400,
+      "delta": 12100.0,
       "tPlus0": true
     },
     {
-      "code": "512760",
-      "name": "半导体ETF",
+      "code": "518880",
+      "name": "黄金ETF",
       "exchange": "SH",
-      "price": 1.462,
-      "currentQty": 174400.0,
-      "targetQty": 172500,
-      "delta": -1900.0,
-      "tPlus0": false
+      "price": 8.378,
+      "currentQty": 38300.0,
+      "targetQty": 30900,
+      "delta": -7400.0,
+      "tPlus0": true
     },
     {
       "code": "511880",
       "name": "货币ETF",
       "exchange": "SH",
-      "price": 100.562,
-      "currentQty": 900.0,
-      "targetQty": 1000,
-      "delta": 100.0,
+      "price": 100.559,
+      "currentQty": 1000.0,
+      "targetQty": 800,
+      "delta": -200.0,
       "tPlus0": true
-    },
-    {
-      "code": "510300",
-      "name": "沪深300ETF",
-      "exchange": "SH",
-      "price": 4.907,
-      "currentQty": 10200.0,
-      "targetQty": 10200,
-      "delta": 0.0,
-      "tPlus0": false
     }
   ],
   "predicted_deferred_t1": [],
-  "days_to_contest_end": 23,
-  "log_path": "/root/.openclaw/skills/htsc-etf-strategy/rebalance-20260626-224236.log"
+  "days_to_contest_end": 19,
+  "log_path": "/root/.openclaw/skills/htsc-etf-strategy/rebalance-20260630-105836.log"
 }
