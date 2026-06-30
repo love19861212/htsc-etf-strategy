@@ -43,11 +43,28 @@ metadata:
 
 ## 动态攻防切换 (3 层信号)
 
+### 第 0 层 — Top10 集中押 leader（2026-06-30 起默认）
+
+**目标**：华泰柏瑞杯 top 10 需 32%+ 收益, 20 天, 日均 1.5%+。仅靠动态调 profile 不够, 必须集中持仓。
+
+`dynamic.top10_mode: true` 时启用。每次 rebalance:
+1. 拿 5 ETF 当日 `getQuote().change%`
+2. 按涨幅排序, leader 拿 `top10_leader_weight` (默认 55%), 2nd 拿 `top10_second_weight` (默认 30%), 3rd 拿 `top10_third_weight` (默认 10%), 剩下补货币 ETF
+3. 若 leader 涨幅 < `top10_min_leader_change` (默认 0.5%) → 信号弱, 退回 offense
+4. 若所有 ETF 都跌/平 → 退回 defense
+5. **阶段 0 补卖**：cash 缺口时自动卖非 leader 持仓释放现金（前提：top10_mode）
+
+**激进配置**（top 10 专用）：
+- `maxSinglePositionPct: 60`（从 40 上调, 允许单品种 60%）
+- `stopLossPct: 6` / `softStopLossPct: 3`（从 8/5 收紧）
+- `defenseTriggerPct: -1` / `offenseTriggerPct: 2`（从 -2/5 收紧）
+- `minCashPct: 3`（从 5 降低）
+
 ### 第 1 层 — 累计 P&L 阈值（静态基础）
 
 在 `risk` 里：
-- `pnl_pct ≤ defenseTriggerPct (-2%)` → defense
-- `pnl_pct ≥ offenseTriggerPct (+5%)` → offense
+- `pnl_pct ≤ defenseTriggerPct (-1%)` → defense
+- `pnl_pct ≥ offenseTriggerPct (+2%)` → offense
 - else → balanced
 
 ### 第 2 层 — 动态市场信号（启用后 override 基础）
@@ -68,14 +85,14 @@ metadata:
 | balanced 时 `offense_avg > aggressive_offense_trigger_offense_avg` | 升 offense |
 | balanced 时 `defense_avg > 1%` AND `offense_avg < 0` | 降 defense |
 
-**激进默认值**（2026-06-30 排名 207, 1.67% 距 49.39% 第 1 差 30 倍）：
-- `strong_risk_on_cross: 1.0` (放宽, 容易进 offense)
-- `strong_risk_off_cross: -1.5` (放宽, 难出 offense)
-- `aggressive_offense_trigger_offense_avg: 1.0` (进攻 +1% 就升档)
+**激进默认值**（排名 207 → top 10 需要 30+%）：
+- `strong_risk_on_cross: 0.5` (放宽, 容易进 offense)
+- `strong_risk_off_cross: -2.0` (放宽, 难出 offense)
+- `aggressive_offense_trigger_offense_avg: 0.5` (进攻 +0.5% 就升档)
 
 ### 第 3 层 — 持仓清理
 
-- 每次 rebalance 检查持仓, 不在 active targets (defense/balanced/offense 三个的并集) 的品种
+- 每次 rebalance 检查持仓, 不在 active targets (defense/balanced/offense/top10 三个的并集) 的品种
 - 一次性市价清仓, T+1 锁定的顺延到下一日
 
 ## 工具
